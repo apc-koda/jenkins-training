@@ -1,12 +1,10 @@
 ---
-- name: wordpress環境構築
+- name: wordpress環境構築 for web
   hosts: web
-  #remote_user: root
   remote_user: vagrant
   become: yes
 
   vars:
-    # wordpress_url: https://ja.wordpress.org/wordpress-4.4.2-ja.tar.gz
     wordpress_url: http://wordpress.org/latest.tar.gz
 
   tasks:
@@ -33,29 +31,6 @@
       section=Date
       option=date.timezone
       value='"Asia/Tokyo"'
-
-  - name: MariaDBインストール
-    yum: name="{{item}}" state=latest
-    with_items:
-      - mariadb
-      - mariadb-server
-      - MySQL-python
-
-  - name: サービスの起動
-    service: name=mariadb state=started enabled=yes
-
-  - name: check db create
-    shell: mysql -e "show databases" |grep wordpress
-    register: db_created
-    changed_when: false
-    failed_when: db_created.rc not in [0, 1]
-
-  - name : create database
-    shell : mysqladmin create wordpress
-    when: db_created.rc == 1
-
-  - name : create new user
-    shell : mysql -e "grant all privileges on wordpress.* to wordpress@localhost identified by 'password'"
 
   - name: wordpressのダウンロード
     get_url:
