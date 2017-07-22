@@ -1,0 +1,80 @@
+---
+- name: wordpress環境構築
+  hosts: web
+  #remote_user: root
+  remote_user: vagrant
+  become: yes
+
+  vars:
+    # wordpress_url: https://ja.wordpress.org/wordpress-4.4.2-ja.tar.gz
+    wordpress_url: http://wordpress.org/latest.tar.gz
+
+  tasks:
+  - name: Apache（httpd）のインストール
+    yum: name=httpd state=latest
+
+  - name: firewalldでHTTPを許可
+    firewalld: permanent=True service=http state=enabled immediate=true
+
+  - name: サービスの起動
+    service: name=httpd state=started enabled=yes
+
+  - name: PHPのインストール
+    yum: name="{{item}}" state=latest
+    with_items:
+      - php
+      - php-mysql
+    notify: restart httpd
+
+
+  - name: タイムゾーンの設定
+    ini_file: >
+      dest=/etc/php.ini
+      section=Date
+      option=date.timezone
+      value='"Asia/Tokyo"'
+
+  - name: MariaDBインストール
+    yum: name="{{item}}" state=latest
+    with_items:
+      - mariadb
+      - mariadb-server
+      - MySQL-python
+
+  - name: サービスの起動
+    service: name=mariadb state=started enabled=yes
+
+  - name: check db create
+    shell: mysql -e "show databases" |grep wordpress
+    register: db_created
+    changed_when: false
+    failed_when: db_created.rc not in [0, 1]
+
+  - name : create database
+    shell : mysqladmin create wordpress
+    when: db_created.rc == 1
+
+  - name : create new user
+    shell : mysql -e "grant all privileges on wordpress.* to wordpress@localhost identified by 'password'"
+
+  - name: wordpressのダウンロード
+    get_url:
+      url="{{wordpress_url}}"
+      dest=/tmp/wordpress.tar.gz
+
+  - name: wordpressの展開
+    unarchive:
+      src=/tmp/wordpress.tar.gz
+      dest=/var/www/html
+      copy=no
+      creates=/var/www/html/wordpress
+
+  - name: wordpressの所有権をapacheに変更
+    file: path=/var/www/html/wordpress/ owner=apache group=apache recurse=yes
+
+  - name: httpサービスの起動
+    service: name=httpd state=restarted
+
+  handlers:
+  - name: restart httpd
+    service: name=httpd state=restarted
