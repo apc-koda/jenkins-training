@@ -18,7 +18,7 @@ host = ENV['TARGET_HOST']
 
 options = Net::SSH::Config.for(host)
 
-options[:user] ||= Etc.getlogin
+options[:user] = 'vagrant'
 
 set :host,        options[:host_name] || host
 set :ssh_options, options
