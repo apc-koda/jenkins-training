@@ -2,6 +2,8 @@
 # vi: set ft=ruby :
 
 Vagrant.configure(2) do |config|
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+
   config.vm.define "master" do |node|
     node.vm.box = "cent7dev"
     node.vm.hostname = "master"
